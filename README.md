@@ -6,7 +6,7 @@ Minimal MCP server built with FastMCP and packaged for uv.
 
 1. Run the server:
    ```bash
-   uv run main.py
+   uv run src/main.py
    ```
    The server listens on `0.0.0.0:1234` at the `/resource` path.
 
