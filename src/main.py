@@ -25,8 +25,8 @@ def create_mcp() -> FastMCP:
     mcp = FastMCP("resource-mcp")
 
     @mcp.tool
-    def list_resources() -> list[str]:
-        """List all files under the resource directory."""
+    def list_database() -> list[str]:
+        """List all files under the resource directory. This is my personal database directory."""
         if not resource_dir.exists():
             return []
 
@@ -39,19 +39,19 @@ def create_mcp() -> FastMCP:
         return files
 
     @mcp.tool
-    def cat_resource(path: str) -> str:
+    def cat_database(path: str) -> str:
         """Return the contents of a file under the resource directory."""
         target = (resource_dir / path).resolve()
         root = resource_dir.resolve()
 
-        logger.info(f"cat_resource requested for {path}")
+        logger.info(f"cat_database requested for {path}")
         if root not in target.parents and target != root:
             raise ValueError("Requested path is outside the resource directory.")
 
         if not target.is_file():
             raise FileNotFoundError(f"Resource file not found: {path}")
 
-        logger.info(f"cat_resource reading {target}")
+        logger.info(f"cat_database reading {target}")
         return target.read_text()
 
     @mcp.tool

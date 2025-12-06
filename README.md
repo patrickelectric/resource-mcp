@@ -12,8 +12,8 @@ Minimal MCP server built with FastMCP and packaged for uv.
 
 ### Tools
 
-- `list_resources()`: returns all files under the project-level `resource/` directory (relative paths).
-- `cat_resource(path)`: returns the contents of a file inside the `resource/` directory.
+- `list_database()`: returns all files under the project-level `resource/` directory (relative paths).
+- `cat_database(path)`: returns the contents of a file inside the `resource/` directory.
 - `gitingest(url)`: downloads a repository digest via GitIngest, saves it as `<path>.md` mirroring the URL path under `resource/`, and returns the combined summary/tree/content. Example: `gitingest("https://gitingest.com/eclipse-zenoh/zenoh")` writes `resource/eclipse-zenoh/zenoh.md`.
 - `search_repos(query, limit=10)`: searches GitHub repositories via PyGithub and returns up to `limit` results with basic metadata. Uses `GITHUB_TOKEN` if set for higher rate limits.
 
