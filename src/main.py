@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 from fastmcp import FastMCP
 from gitingest import ingest_async
 from github import Github
+from loguru import logger
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -43,12 +44,14 @@ def create_mcp() -> FastMCP:
         target = (resource_dir / path).resolve()
         root = resource_dir.resolve()
 
+        logger.info(f"cat_resource requested for {path}")
         if root not in target.parents and target != root:
             raise ValueError("Requested path is outside the resource directory.")
 
         if not target.is_file():
             raise FileNotFoundError(f"Resource file not found: {path}")
 
+        logger.info(f"cat_resource reading {target}")
         return target.read_text()
 
     @mcp.tool
@@ -59,6 +62,7 @@ def create_mcp() -> FastMCP:
         The digest is written to `<resource>/<name>.md`, where `<name>` comes from
         the last path segment of the provided URL.
         """
+        logger.info(f"gitingest called for {url}")
         parsed = urlparse(url)
         segments = [
             re.sub(r"[^a-zA-Z0-9._-]+", "-", part) or "resource"
@@ -75,6 +79,7 @@ def create_mcp() -> FastMCP:
         digest = f"{summary}\n\n{tree}\n\n{content}"
 
         target.write_text(digest)
+        logger.info(f"gitingest wrote digest to {target}")
         return digest
 
     @mcp.tool
@@ -89,6 +94,7 @@ def create_mcp() -> FastMCP:
         gh = Github(login_or_token=token) if token else Github()
 
         limit = max(1, min(limit, 50))
+        logger.info(f"search_repos query='{query}' limit={limit}")
         results = []
         for repo in gh.search_repositories(query=query)[:limit]:
             results.append(
