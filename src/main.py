@@ -170,9 +170,14 @@ def create_mcp() -> FastMCP:
     return mcp
 
 
+#
+# Expose a module-level MCP instance so FastMCP CLI tools can discover it.
+#
+mcp = create_mcp()
+
+
 def main() -> None:
     """Start the MCP server."""
-    mcp = create_mcp()
     mcp.run(
         transport="http",
         host="0.0.0.0",
