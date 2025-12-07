@@ -177,7 +177,7 @@ def main() -> None:
         transport="http",
         host="0.0.0.0",
         port=1234,
-        path="/resource",
+        path="/mcp",
     )
 
 

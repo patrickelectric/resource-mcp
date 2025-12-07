@@ -24,5 +24,5 @@ Minimal MCP server built with FastMCP and packaged for uv.
 Add the MCP endpoint to Codex:
 
 ```bash
-codex mcp add resource --url http://0.0.0.0:1234/resource
+codex mcp add resource --url http://0.0.0.0:1234/mcp
 ```
