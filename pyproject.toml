@@ -11,6 +11,7 @@ dependencies = [
     "gitingest>=0.3.0",
     "loguru>=0.7.2",
     "wikipedia>=1.4.0",
+    "youtube-transcript-api>=1.2.0",
 ]
 
 [project.scripts]

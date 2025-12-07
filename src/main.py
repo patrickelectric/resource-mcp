@@ -1,7 +1,8 @@
+import json
 import os
 import re
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from fastmcp import FastMCP
 from gitingest import ingest_async
@@ -9,6 +10,7 @@ from github import Github
 from loguru import logger
 import wikipedia
 from wikipedia import exceptions as wiki_exceptions
+from youtube_transcript_api import YouTubeTranscriptApi
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -27,11 +29,35 @@ def _slugify_filename(name: str, default: str = "resource") -> str:
     return slug or default
 
 
+def _extract_video_id(value: str) -> str:
+    """
+    Extract the YouTube video ID from a URL or raw ID.
+
+    Supports full URLs, share links, and bare 11-character IDs.
+    """
+    parsed = urlparse(value.strip())
+    if parsed.scheme and parsed.netloc:  # URL form
+        if parsed.netloc in {"youtu.be", "www.youtu.be"}:
+            candidate = parsed.path.lstrip("/")
+        else:
+            query_params = parse_qs(parsed.query)
+            candidate = query_params.get("v", [parsed.path.split("/")[-1]])[0]
+    else:
+        candidate = value
+
+    video_id = re.sub(r"[^a-zA-Z0-9_-]", "", candidate)
+    if len(video_id) != 11:
+        raise ValueError("Could not extract a valid 11-character YouTube video ID.")
+    return video_id
+
+
 def create_mcp() -> FastMCP:
     """Create and configure the MCP server with resource tools."""
     resource_dir = _ensure_resource_dir()
     wikipedia_dir = resource_dir / "wikipedia"
     wikipedia_dir.mkdir(parents=True, exist_ok=True)
+    youtube_dir = resource_dir / "youtube"
+    youtube_dir.mkdir(parents=True, exist_ok=True)
     mcp = FastMCP("resource-mcp")
 
     @mcp.tool
@@ -111,6 +137,47 @@ def create_mcp() -> FastMCP:
             "path": str(target.relative_to(resource_dir)),
             "content": content,
         }
+
+    @mcp.tool
+    def get_youtube_transcript(
+        video_url: str,
+        languages: list[str] | None = None,
+        save: bool = True,
+    ) -> dict[str, str | list[dict[str, float | str]] | None]:
+        """
+        Fetch the transcript for a YouTube video.
+
+        - Accepts a full YouTube URL or a bare 11-character video ID.
+        - `languages` is an ordered preference list (e.g. ["en", "en-US", "es"]);
+          defaults to English if not provided.
+        - When `save` is True, the transcript is stored as JSON under
+          `resource/youtube/<video_id>.json` and the relative path is returned.
+        """
+        video_id = _extract_video_id(video_url)
+        lang_pref = [languages] if isinstance(languages, str) else languages
+        lang_pref = lang_pref or ["en"]
+
+        logger.info(f"get_youtube_transcript video_id='{video_id}' langs={lang_pref}")
+        try:
+            fetched = YouTubeTranscriptApi().fetch(video_id, languages=lang_pref)
+            transcript = fetched.to_raw_data()
+            language = fetched.language
+        except Exception as exc:
+            raise RuntimeError(f"Error while fetching YouTube transcript: {exc}") from exc
+
+        path: str | None = None
+        if save:
+            target = youtube_dir / f"{_slugify_filename(video_id)}.json"
+            payload = {
+                "video_id": video_id,
+                "language": language,
+                "transcript": transcript,
+            }
+            target.write_text(json.dumps(payload, ensure_ascii=False, indent=2))
+            path = str(target.relative_to(resource_dir))
+            logger.info(f"get_youtube_transcript wrote {target}")
+
+        return {"video_id": video_id, "language": language, "path": path, "transcript": transcript}
 
     @mcp.tool
     async def gitingest(url: str) -> str:
