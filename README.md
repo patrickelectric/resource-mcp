@@ -14,6 +14,8 @@ Minimal MCP server built with FastMCP and packaged for uv.
 
 - `list_database()`: returns all files under the project-level `resource/` directory (relative paths).
 - `cat_database(path)`: returns the contents of a file inside the `resource/` directory.
+- `search_wikipedia(query, limit=10)`: searches Wikipedia article titles and optionally returns a suggestion.
+- `fetch_wikipedia_content(title)`: downloads a Wikipedia page's content, saves it as `resource/wikipedia/<title>.md`, and returns the saved path plus content.
 - `gitingest(url)`: downloads a repository digest via GitIngest, saves it as `<path>.md` mirroring the URL path under `resource/`, and returns the combined summary/tree/content. Example: `gitingest("https://gitingest.com/eclipse-zenoh/zenoh")` writes `resource/eclipse-zenoh/zenoh.md`.
 - `search_repos(query, limit=10)`: searches GitHub repositories via PyGithub and returns up to `limit` results with basic metadata. Uses `GITHUB_TOKEN` if set for higher rate limits.
 

@@ -10,6 +10,7 @@ dependencies = [
     "pygithub>=2.8.1",
     "gitingest>=0.3.0",
     "loguru>=0.7.2",
+    "wikipedia>=1.4.0",
 ]
 
 [project.scripts]

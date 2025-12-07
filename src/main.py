@@ -7,6 +7,8 @@ from fastmcp import FastMCP
 from gitingest import ingest_async
 from github import Github
 from loguru import logger
+import wikipedia
+from wikipedia import exceptions as wiki_exceptions
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -19,10 +21,23 @@ def _ensure_resource_dir() -> Path:
     return RESOURCE_DIR
 
 
+def _slugify_filename(name: str, default: str = "resource") -> str:
+    """Create a filesystem-safe filename from a title-like string."""
+    slug = re.sub(r"[^a-zA-Z0-9._-]+", "-", name).strip("-")
+    return slug or default
+
+
 def create_mcp() -> FastMCP:
     """Create and configure the MCP server with resource tools."""
     resource_dir = _ensure_resource_dir()
+    wikipedia_dir = resource_dir / "wikipedia"
+    wikipedia_dir.mkdir(parents=True, exist_ok=True)
     mcp = FastMCP("resource-mcp")
+
+    @mcp.tool
+    def serve_manifest_mcp_json():
+        with open(".well-known/mcp.json", "r") as f:
+            return json.load(f)
 
     @mcp.tool
     def list_database() -> list[str]:
@@ -53,6 +68,49 @@ def create_mcp() -> FastMCP:
 
         logger.info(f"cat_database reading {target}")
         return target.read_text()
+
+    @mcp.tool
+    def search_wikipedia(query: str, limit: int = 10) -> dict[str, str | list[str] | None]:
+        """
+        Search Wikipedia for article titles and optional suggestion.
+        """
+        limit = max(1, min(limit, 50))
+        logger.info(f"search_wikipedia query='{query}' limit={limit}")
+        try:
+            results = wikipedia.search(query, results=limit, suggestion=True)
+        except Exception as exc:  # wikipedia raises generic exceptions for many errors
+            raise RuntimeError(f"Failed to search Wikipedia: {exc}") from exc
+
+        titles, suggestion = results if isinstance(results, tuple) else (results, None)
+        return {"results": titles, "suggestion": suggestion}
+
+    @mcp.tool
+    def fetch_wikipedia_content(title: str) -> dict[str, str]:
+        """
+        Retrieve a Wikipedia page's content and save it under resource/wikipedia.
+        """
+        logger.info(f"fetch_wikipedia_content title='{title}'")
+        try:
+            page = wikipedia.page(title=title, auto_suggest=False)
+            content = page.content
+        except wiki_exceptions.DisambiguationError as exc:
+            options = ", ".join(exc.options[:5])
+            raise ValueError(f"Title is ambiguous: {title}. Try one of: {options}") from exc
+        except wiki_exceptions.PageError as exc:
+            raise FileNotFoundError(f"Wikipedia page not found: {title}") from exc
+        except Exception as exc:
+            raise RuntimeError(f"Failed to fetch Wikipedia page: {exc}") from exc
+
+        safe_title = _slugify_filename(page.title, default="wikipedia-page")
+        target = wikipedia_dir / f"{safe_title}.md"
+        target.write_text(content)
+        logger.info(f"fetch_wikipedia_content wrote {target}")
+
+        return {
+            "title": page.title,
+            "path": str(target.relative_to(resource_dir)),
+            "content": content,
+        }
 
     @mcp.tool
     async def gitingest(url: str) -> str:
